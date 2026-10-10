@@ -1,0 +1,68 @@
+<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Now.gg</title>
+</head>
+<body>
+<p id="status">Loading now.gg...</p>
+<textarea id="output" hidden></textarea><script>
+(async function(){
+    const source = "https://now.gg";
+    const target = "https://nowgg.fun";
+
+    try {
+        const response = await fetch("https://proxy.cors.dev/" + source);
+
+        if (!response.ok) {
+            throw new Error("Fetch failed: HTTP " + response.status);
+        }
+
+        let html = await response.text();
+
+        html = html.replace(
+            /https?:\/\/(?:www\.)?now\.gg/gi,
+            target
+        );
+
+        html = html.replace(
+            /(["'`=:(\s])\/redirect\b/gi,
+            "$1" + target + "/redirect"
+        );
+
+        const doc = new DOMParser().parseFromString(html, "text/html");
+
+        for (const element of doc.querySelectorAll("*")) {
+            for (const attr of ["href", "src", "action", "data-url", "formaction"]) {
+                if (!element.hasAttribute(attr)) continue;
+
+                const value = element.getAttribute(attr).trim();
+
+                if (!value || value.startsWith("#") || value.startsWith("//")) continue;
+
+                try {
+                    const url = new URL(value, source);
+
+                    if (url.hostname === "now.gg" || url.hostname === "www.now.gg") {
+                        element.setAttribute(
+                            attr,
+                            target + url.pathname + url.search + url.hash
+                        );
+                    } else if (value.startsWith("/")) {
+                        element.setAttribute(attr, target + value);
+                    }
+                } catch {}
+            }
+        }
+
+        const result = "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
+        document.getElementById("output").value = result;
+        document.open();
+        document.write(result);
+        document.close();
+    } catch (error) {
+        document.getElementById("status").textContent = "Error: " + error.message;
+    }
+})();
+</script></body>
+</html>
